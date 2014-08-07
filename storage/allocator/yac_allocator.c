@@ -26,36 +26,26 @@
 
 static const yac_shared_memory_handlers *shared_memory_handler = NULL;
 static const char *shared_model;
-
+#if 0
 int yac_allocator_startup(unsigned long k_size, unsigned long size, char **msg) /* {{{ */ {
 	char *p;
 	yac_shared_segment *segments = NULL;
     int i, segments_num, segments_array_size, segment_size;
 	const yac_shared_memory_handlers *he;
 
-    if ((he = &yac_shared_memory_handler)) {
-        int ret = he->create_segments(k_size, size, &segments, &segments_num, msg);
-
-        if (!ret) {
-            if (segments) {
-                int i;
-                for (i = 0; i < segments_num; i++) {
-                    if (segments[i].p && segments[i].p != (void *)-1) {
-                        he->detach_segment(&segments[i]);
-                    }
-                }
-                free(segments);
-            }
-            return 0;
-        }
-    } else {
+    if (!(he = &yac_shared_memory_handler)) {
 		return 0;
 	}
 
 	segment_size = he->segment_type_size();
 	segments_array_size = (segments_num - 1) * segment_size;
 
-    yac_storage = segments[0].p;
+    yac_storage = he->create_segment(sizeof(*yac_storage));
+
+	YAC_SG(first_seg) = he->create_segment(k_size);
+
+	YAC_SG(slots) = he->create_segment(k_size);
+
     memcpy(&YAC_SG(first_seg), (char *)(&segments[0]), segment_size);
 
     YAC_SG(segments_num) 		= segments_num - 1;
@@ -93,6 +83,7 @@ void yac_allocator_shutdown(void) /* {{{ */ {
     }
 }
 /* }}} */
+#endif
 
 static inline void *yac_allocator_alloc_algo2(unsigned long size, int hash) /* {{{ */ {
     yac_shared_segment *segment;
@@ -127,8 +118,8 @@ do_alloc:
 				goto do_alloc;
 			}
 		}
-		segment->pos = 0;
-		pos = 0;
+//		segment->pos = 0;
+		pos = -size;
 		++YAC_SG(recycles);
 		goto do_alloc;
 	}
@@ -159,7 +150,7 @@ static inline void *yac_allocator_alloc_algo1(unsigned long size) /* {{{ */ {
 unsigned long yac_allocator_real_size(unsigned long size) /* {{{ */ {
 	unsigned long real_size = YAC_SMM_TRUE_SIZE(size);
 
-    if (real_size > YAC_SG(segments)[0]->size) {
+    if (real_size > YAC_SG(segments_size)) {
         return 0;
     }
 

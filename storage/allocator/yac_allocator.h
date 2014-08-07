@@ -52,13 +52,21 @@
 #define SUCCESSFULLY_REATTACHED 4
 #define ALLOC_FAIL_MAPPING      8
 
-typedef int (*create_segments_t)(unsigned long k_size, unsigned long v_size, yac_shared_segment **shared_segments, int *shared_segment_count, char **error_in);
-typedef int (*detach_segment_t)(yac_shared_segment *shared_segment);
+typedef struct {
+	void *ptr;
+	unsigned int size;
+	union {
+		int i;
+		void *p;
+	} allocator_info;
+} yac_shared_memory_t;
+
+typedef yac_shared_memory_t (*attach_t)(unsigned long);
+typedef int (*detach_t)(yac_shared_memory_t*);
 
 typedef struct {
-	create_segments_t create_segments;
-	detach_segment_t detach_segment;
-	unsigned long (*segment_type_size)(void);
+	attach_t attach;
+	detach_t detach;
 } yac_shared_memory_handlers;
 
 typedef struct {

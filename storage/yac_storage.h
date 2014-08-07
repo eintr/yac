@@ -19,6 +19,7 @@
 /* $Id$ */
 
 #include "yac_lock.h"
+#include "allocator/yac_allocator.h"
 
 #ifndef YAC_STORAGE_H
 #define YAC_STORAGE_H
@@ -92,20 +93,26 @@ typedef struct {
 	unsigned int slots_mask;
 	unsigned int slots_num;
 	unsigned int slots_size;
+	//yac_shared_segment first_seg;
+	yac_shared_memory_t slots_mutex_segment;
+	yac_shared_memory_t key_segment;
+
 	unsigned int miss;
 	unsigned int fails;
 	unsigned int kicks;
 	unsigned int recycles;
 	unsigned long hits;
+
 	yac_shared_segment **segments;
+	unsigned int segments_size;
 	unsigned int segments_num;
 	unsigned int segments_num_mask;
-	yac_shared_segment first_seg;
+	yac_shared_memory_t value_segment;
 } yac_storage_globals;
 
-extern yac_storage_globals *yac_storage;
+extern yac_shared_memory_t yac_storage;
 
-#define YAC_SG(element) (yac_storage->element)
+#define YAC_SG(element) (((yac_storage_globals*)(yac_storage.ptr))->element)
 
 #define	YAC_FLAGS_USE_LOCK	0x00000001UL
 

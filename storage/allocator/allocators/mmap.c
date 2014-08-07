@@ -40,6 +40,24 @@ typedef struct  {
 	unsigned long size;
 } yac_shared_segment_mmap;
 
+static yac_shared_memory_t attach(unsigned long size) /* {{{ */ {
+	yac_shared_memory_t ret;
+
+	ret.ptr = mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
+	if (ret.ptr==MAP_FAILED) {
+		ret.ptr = NULL;
+	}
+	ret.size = size;
+	ret.allocator_info.p = NULL;
+	return ret;
+}
+/* }}} */
+
+static int detach(yac_shared_memory_t *shm) /* {{{ */ {
+	return !munmap(shm->ptr, shm->size);
+}
+
+#if 0
 static int create_segments(unsigned long k_size, unsigned long v_size, yac_shared_segment_mmap **shared_segments_p, int *shared_segments_count, char **error_in) /* {{{ */ {
 	yac_shared_segment *shared_segment;
 	unsigned long allocate_size, occupied_size =  0;
@@ -106,11 +124,11 @@ static unsigned long segment_type_size(void) /* {{{ */ {
 	return sizeof(yac_shared_segment_mmap);
 }
 /* }}} */
+#endif
 
 yac_shared_memory_handlers yac_alloc_mmap_handlers = /* {{{ */ {
-	create_segments,
-	detach_segment,
-	segment_type_size
+	attach,
+	detach,
 };
 /* }}} */
 
