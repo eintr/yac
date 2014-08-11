@@ -22,8 +22,6 @@
 #include "yac_storage.h"
 #include "allocator/yac_allocator.h"
 
-//yac_storage_globals *yac_storage;
-
 yac_shared_memory_t yac_storage;
 
 static inline unsigned int yac_storage_align_size(unsigned int size) /* {{{ */ {
