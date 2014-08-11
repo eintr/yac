@@ -25,6 +25,7 @@
 #include <sys/stat.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <sys/mman.h>
 
 #if defined(MAP_ANON) && !defined(MAP_ANONYMOUS)
@@ -42,6 +43,13 @@ typedef struct  {
 
 static yac_shared_memory_t attach(unsigned long size) /* {{{ */ {
 	yac_shared_memory_t ret;
+	unsigned int pagesize, real_size;
+
+	pagesize = sysconf(_SC_PAGE_SIZE);
+
+	if (size%pagesize!=0) {
+		size = (size/pagesize+1)*pagesize;
+	}
 
 	ret.ptr = mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_SHARED|MAP_ANONYMOUS, -1, 0);
 	if (ret.ptr==MAP_FAILED) {
