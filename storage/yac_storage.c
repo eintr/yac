@@ -69,6 +69,10 @@ int yac_storage_startup_flags(unsigned long ksize, unsigned long vsize, char **m
 	}
     while ((YAC_SG(value_segment).size / YAC_SG(segments_num)) < YAC_SMM_SEGMENT_MIN_SIZE) {
         YAC_SG(segments_num) >>= 1;
+		if (YAC_SG(segments_num)==0) {
+			YAC_SG(segments_num) = 1;
+			break;
+		}
     }
     YAC_SG(segments_size) = YAC_SG(value_segment).size / YAC_SG(segments_num);
 	YAC_SG(segments) = calloc(YAC_SG(segments_num), sizeof(yac_shared_segment*));
