@@ -74,7 +74,7 @@ typedef struct {
 	yac_shared_memory_handlers *handler;
 } yac_shared_memory_handler_entry;
 
-int yac_allocator_startup(unsigned long first_seg_size, unsigned long size, char **err);
+int yac_allocator_startup(unsigned long ksize, unsigned long vsize, unsigned long flag, char **err);
 void yac_allocator_shutdown(void);
 unsigned long yac_allocator_real_size(unsigned long size);
 void *yac_allocator_raw_alloc(unsigned long real_size, int seg);

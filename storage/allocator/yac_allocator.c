@@ -26,64 +26,107 @@
 
 static const yac_shared_memory_handlers *shared_memory_handler = NULL;
 static const char *shared_model;
-#if 0
-int yac_allocator_startup(unsigned long k_size, unsigned long size, char **msg) /* {{{ */ {
-	char *p;
-	yac_shared_segment *segments = NULL;
-    int i, segments_num, segments_array_size, segment_size;
-	const yac_shared_memory_handlers *he;
 
-    if (!(he = &yac_shared_memory_handler)) {
-		return 0;
+static inline unsigned int yac_storage_align_size(unsigned int size) /* {{{ */ {
+    int bits = 0;
+    while ((size = size >> 1)) {
+        ++bits;
+    }
+    return (1 << bits);
+}
+/* }}} */
+
+int yac_allocator_startup(unsigned long ksize, unsigned long vsize, unsigned long flags, char **msg) /* {{{ */ {
+	unsigned int i;
+	const yac_shared_memory_handlers *h;
+	yac_shared_segment *segments;
+
+    if (!(h = &yac_shared_memory_handler)) {
+        return ALLOC_FAILURE;
+    }
+
+	yac_storage = h->attach(sizeof(yac_storage));
+	if (yac_storage.ptr==NULL) {
+		return ALLOC_FAILURE;
+	}
+	YAC_SG(segments_num)= 1024;
+
+	YAC_SG(value_segment) = h->attach(vsize);
+	if (YAC_SG(value_segment).ptr == NULL) {
+		// TODO: detach
+		return ALLOC_FAILURE;
+	}
+    while ((YAC_SG(value_segment).size / YAC_SG(segments_num)) < YAC_SMM_SEGMENT_MIN_SIZE) {
+        YAC_SG(segments_num) >>= 1;
+		if (YAC_SG(segments_num)==0) {
+			YAC_SG(segments_num) = 1;
+			break;
+		}
+    }
+    YAC_SG(segments_size) = YAC_SG(value_segment).size / YAC_SG(segments_num);
+	YAC_SG(segments) = calloc(YAC_SG(segments_num), sizeof(yac_shared_segment*));
+	if (YAC_SG(segments)==NULL) {
+		// TODO: detach
+		return ALLOC_FAILURE;
+	}
+	segments = calloc(YAC_SG(segments_num), sizeof(yac_shared_segment));
+	for (i=0; i<YAC_SG(segments_num); ++i) {
+		YAC_SG(segments)[i] = segments+i;
+		YAC_SG(segments)[i]->pos = 0;
+		YAC_SG(segments)[i]->p = YAC_SG(value_segment).ptr + i*YAC_SMM_ALIGNED_SIZE(YAC_SG(segments_size));
+		if (i<YAC_SG(segments_num)-1) {
+			YAC_SG(segments)[i]->size = YAC_SMM_ALIGNED_SIZE(YAC_SG(segments_size));
+		} else {
+			YAC_SG(segments)[i]->size = YAC_SG(value_segment).size-i*YAC_SMM_ALIGNED_SIZE(YAC_SG(segments_size));
+		}
 	}
 
-	segment_size = he->segment_type_size();
-	segments_array_size = (segments_num - 1) * segment_size;
-
-    yac_storage = he->create_segment(sizeof(*yac_storage));
-
-	YAC_SG(first_seg) = he->create_segment(k_size);
-
-	YAC_SG(slots) = he->create_segment(k_size);
-
-    memcpy(&YAC_SG(first_seg), (char *)(&segments[0]), segment_size);
-
-    YAC_SG(segments_num) 		= segments_num - 1;
-	YAC_SG(segments_num_mask) 	= YAC_SG(segments_num) - 1;
-    YAC_SG(segments)     		= (yac_shared_segment **)((char *)yac_storage + YAC_SMM_ALIGNED_SIZE(sizeof(yac_storage_globals) + segment_size - sizeof(yac_shared_segment)));
-
-	p = (char *)YAC_SG(segments) + (sizeof(void *) * YAC_SG(segments_num));
-    memcpy(p, (char *)segments + segment_size, segments_array_size);
-	for (i = 0; i < YAC_SG(segments_num); i++) {
-		YAC_SG(segments)[i] = (yac_shared_segment *)p;
-		p += segment_size;
+	YAC_SG(key_segment) = h->attach(ksize);
+	if (YAC_SG(key_segment).ptr == NULL) {
+		// TODO: detach
+		return ALLOC_FAILURE;
 	}
-    YAC_SG(slots) = (yac_kv_key *)((char *)YAC_SG(segments)
-			+ (YAC_SG(segments_num) * sizeof(void *)) + YAC_SMM_ALIGNED_SIZE(segments_array_size));
+	YAC_SG(slots) = YAC_SG(key_segment).ptr;
+	YAC_SG(slots_size) = yac_storage_align_size(YAC_SG(key_segment).size / sizeof(yac_kv_key));
+	if (!((YAC_SG(key_segment).size / sizeof(yac_kv_key)) & ~(YAC_SG(slots_size) << 1))) {
+		YAC_SG(slots_size) <<= 1;
+	}
+	YAC_SG(slots_mask) 	= YAC_SG(slots_size) - 1;
+    YAC_SG(slots_num)  	= 0;
 
-	free(segments);
+	if (flags&YAC_FLAGS_USE_LOCK) {
+		YAC_SG(slots_mutex_segment) = h->attach(sizeof(yac_mutexarray_t)+YAC_SG(slots_size)*sizeof(int));
+		YAC_SG(slots_mutex) = YAC_SG(slots_mutex_segment).ptr;
+		if (YAC_SG(slots_mutex) == NULL) {
+			// TODO: detach
+			return ALLOC_FAILURE;
+		}
+		YAC_SG(slots_mutex)->nelms = YAC_SG(slots_size);
+		yac_mutexarray_init(YAC_SG(slots_mutex));
+	} else {
+		YAC_SG(slots_mutex) = NULL;
+	}
 
-	return 1;
+	return ALLOC_SUCCESS;
 }
 /* }}} */
 
 void yac_allocator_shutdown(void) /* {{{ */ {
-	yac_shared_segment **segments;
-	const yac_shared_memory_handlers *he;
+	const yac_shared_memory_handlers *h;
 
-    segments = YAC_SG(segments);
-    if (segments) {
-        if ((he = &yac_shared_memory_handler)) {
-            int i = 0;
-            for (i = 0; i < YAC_SG(segments_num); i++) {
-                he->detach_segment(segments[i]);
-            }
-    		he->detach_segment(&YAC_SG(first_seg));
-        }
+	yac_mutexarray_destroy(YAC_SG(slots_mutex));
+
+    if (!(h = &yac_shared_memory_handler)) {
+        return;
     }
+	h->detach(&YAC_SG(key_segment));
+	h->detach(&YAC_SG(value_segment));
+	if (YAC_SG(slots_mutex)) {
+		h->detach(&YAC_SG(slots_mutex_segment));
+		YAC_SG(slots_mutex)=NULL;
+	}
 }
 /* }}} */
-#endif
 
 static inline void *yac_allocator_alloc_algo2(unsigned long size, int hash) /* {{{ */ {
     yac_shared_segment *segment;
