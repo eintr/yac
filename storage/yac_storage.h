@@ -93,7 +93,6 @@ typedef struct {
 	unsigned int slots_mask;
 	unsigned int slots_num;
 	unsigned int slots_size;
-	//yac_shared_segment first_seg;
 	yac_shared_memory_t slots_mutex_segment;
 	yac_shared_memory_t key_segment;
 
