@@ -119,7 +119,7 @@ do_alloc:
 			}
 		}
 //		segment->pos = 0;
-		pos = -size;
+		pos = 0;
 		++YAC_SG(recycles);
 		goto do_alloc;
 	}
