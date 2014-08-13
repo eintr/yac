@@ -59,6 +59,7 @@ static yac_shared_memory_t attach(unsigned long size) /* {{{ */ {
 static int detach(yac_shared_memory_t *shm) /* {{{ */ {
 	return !munmap(shm->ptr, shm->size);
 }
+/* }}} */
 
 yac_shared_memory_handlers yac_alloc_mmap_handlers = /* {{{ */ {
 	attach,
