@@ -161,7 +161,7 @@ do_alloc:
 				goto do_alloc;
 			}
 		}
-//		segment->pos = 0;
+		segment->pos = 0;
 		pos = 0;
 		++YAC_SG(recycles);
 		goto do_alloc;
