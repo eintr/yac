@@ -69,10 +69,12 @@ typedef struct {
 	detach_t detach;
 } yac_shared_memory_handlers;
 
+/*
 typedef struct {
 	const char *name;
 	yac_shared_memory_handlers *handler;
 } yac_shared_memory_handler_entry;
+*/
 
 int yac_allocator_startup(unsigned long ksize, unsigned long vsize, unsigned long flag, char **err);
 void yac_allocator_shutdown(void);
