@@ -116,6 +116,9 @@ void yac_allocator_shutdown(void) /* {{{ */ {
 
 	yac_mutexarray_destroy(YAC_SG(slots_mutex));
 
+	free(YAC_SG(segments)[0]);
+	free(YAC_SG(segments));
+
     if (!(h = &yac_shared_memory_handler)) {
         return;
     }
