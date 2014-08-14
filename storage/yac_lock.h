@@ -14,8 +14,8 @@ void yac_mutexarray_delete(yac_mutexarray_t*);
 int yac_mutexarray_init(yac_mutexarray_t*);
 void yac_mutexarray_destroy(yac_mutexarray_t*);
 
-int yac_mutex_lock(yac_mutexarray_t*, int sub);
-int yac_mutex_locknb(yac_mutexarray_t*, int sub);
-int yac_mutex_unlock(yac_mutexarray_t*, int sub);
+inline int yac_mutex_lock(yac_mutexarray_t*, int sub);
+inline int yac_mutex_locknb(yac_mutexarray_t*, int sub);
+inline int yac_mutex_unlock(yac_mutexarray_t*, int sub);
 
 #endif

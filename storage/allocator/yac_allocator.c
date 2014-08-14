@@ -130,7 +130,7 @@ void yac_allocator_shutdown(void) /* {{{ */ {
 
 static inline void *yac_allocator_alloc_algo2(unsigned long size, int hash) /* {{{ */ {
     yac_shared_segment *segment;
-	unsigned int seg_size, retry, pos, current;
+	unsigned int seg_size, retry, savepos, pos, current;
 
 	current = hash & YAC_SG(segments_num_mask);
 	/* do we really need lock here? it depends the real life exam */
@@ -138,13 +138,13 @@ static inline void *yac_allocator_alloc_algo2(unsigned long size, int hash) /* {
 do_retry:
     segment = YAC_SG(segments)[current];
 	seg_size = segment->size;
-	pos = segment->pos;
+	savepos = pos = segment->pos;
 	if ((seg_size - pos) >= size) {
 do_alloc:
 		pos += size;
 		segment->pos = pos;
-		if (segment->pos == pos) {
-			return (void *)((char *)segment->p + (pos - size));
+		if (segment->pos == savepos+size) {
+			return (void *)((char *)segment->p + savepos);
 		} else if (retry--) {
 			goto do_retry;
 		}
@@ -155,14 +155,14 @@ do_alloc:
 		for (i = 1; i < max; i++) {
 			segment = YAC_SG(segments)[(current + i) & YAC_SG(segments_num_mask)];
 			seg_size = segment->size;
-			pos = segment->pos;
+			savepos = pos = segment->pos;
 			if ((seg_size - pos) >= size) {
 				current = (current + i) & YAC_SG(segments_num_mask);
 				goto do_alloc;
 			}
 		}
 		segment->pos = 0;
-		pos = 0;
+		savepos = pos = 0;
 		++YAC_SG(recycles);
 		goto do_alloc;
 	}

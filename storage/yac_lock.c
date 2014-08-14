@@ -58,7 +58,7 @@ void yac_mutexarray_destroy(yac_mutexarray_t *me)
 {
 }
 
-int yac_mutex_lock(yac_mutexarray_t *me, int sub)
+inline int yac_mutex_lock(yac_mutexarray_t *me, int sub)
 {
 	if (me!=NULL && me->nelms>0) {
 		while (!YAC_CAS(&me->elm[sub], MUT_UNLOCKED, MUT_LOCKED)) sched_yield();
@@ -66,7 +66,7 @@ int yac_mutex_lock(yac_mutexarray_t *me, int sub)
 	return 0;
 }
 
-int yac_mutex_locknb(yac_mutexarray_t *me, int sub)
+inline int yac_mutex_locknb(yac_mutexarray_t *me, int sub)
 {
 	if (me!=NULL && me->nelms>0) {
 		return YAC_CAS(&me->elm[sub], MUT_UNLOCKED, MUT_LOCKED)?0:1;
@@ -74,7 +74,7 @@ int yac_mutex_locknb(yac_mutexarray_t *me, int sub)
 	return 0;
 }
 
-int yac_mutex_unlock(yac_mutexarray_t *me, int sub)
+inline int yac_mutex_unlock(yac_mutexarray_t *me, int sub)
 {
 	if (me!=NULL && me->nelms>0) {
 		me->elm[sub] = MUT_UNLOCKED;
